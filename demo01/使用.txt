@@ -1,0 +1,311 @@
+# 整理
+
+#查找指定的库文件
+#find_library(VAR name path)查找到指定的预编译库，并将它的路径存储在变量中。
+#默认的搜索路径为cmake包含的系统库。
+#类似的命令还有 find_file()、find_path()、find_program()、find_package()。
+find_library(log-lib log)
+find_library(MY_LIB libmylib.a ./)
+
+
+#包含其它 cmake 文件
+include(./common.cmake) #指定包含文件的全路径
+include(def) #在搜索路径中搜索def.cmake文件
+set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake) #设置include的搜索路径
+
+
+
+#主要开关选项
+BUILD_SHARED_LIBS：这个开关用来控制默认的库编译方式，如果不进行设置，使用 add_library 又没有指定库类型的情况下，默认编译生成的库都是静态库。
+					#如果 set(BUILD_SHARED_LIBS ON) 后，默认生成的为动态库
+CMAKE_C_FLAGS：设置 C 编译选项，也可以通过指令 add_definitions() 添加
+CMAKE_CXX_FLAGS：设置 C++ 编译选项，也可以通过指令 add_definitions() 添加
+
+add_definitions(-DENABLE_DEBUG -DABC) #参数之间用空格分隔
+ 
+
+
+#设置g++编译器
+SET(CMAKE_CXX_COMPILER "g++")		    
+
+#如果代码需要支持C++11，就直接加上这句
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+
+#如果想要生成的可执行文件拥有符号表，可以gdb调试，就直接加上这句
+add_definitions("-Wall -g")
+
+
+
+
+#在add_subdirectory之前set的各个变量，在子文件夹中是可以调用的
+
+
+
+
+
+
+#just for example add some compiler flags
+target_compile_options(example PUBLIC -std=c++1y -Wall -Wfloat-conversion)
+
+
+
+file(GLOB_RECURSE data resources/*)
+
+#this copies all resource files in the build directory
+#we need this, because we want to work with paths relative to the executable
+file(COPY ${data} DESTINATION resources)
+
+
+
+
+#[[
+macro(subdirlist result curdir)
+	file(GLOB children RELATIVE ${curdir} ${curdir}/*)
+	set(dirlist "")
+	foreach(child ${children})
+		if(IS_DIRECTORY ${curdir}/${child})
+		list(APPEND dirlist ${child})
+		endif()
+	endforeach()
+	set(${result} ${dirlist})
+endmacro()
+
+subdirlist(dirs ${PROJECT_SOURCE_DIR})
+
+message(STATUS "dirs:${dirs}")
+
+foreach(dir ${dirs})
+  add_subdirectory(${dir})
+endforeach(dir)
+
+
+
+file(GLOB files "lib*")
+foreach(dir ${files})
+  add_subdirectory(${dir})
+endforeach(dir)
+
+]]
+
+
+部分常用命令
+INCLUDE_DIRECTORIES( "dir1" "dir2" ... )	头文件路径，相当于编译器参数 -Idir1 -Idir2
+
+AUX_SOURCE_DIRECTORY( “sourcedir” variable)	收集目录中的文件名并赋值给变量
+ADD_EXECUTABLE	可执行程序目标
+ADD_LIBRARY	库目标
+ADD_CUSTOM_TARGET	自定义目标
+ADD_DEPENDENCIES( target1 t2 t3 )	目标target1依赖于t2 t3
+ADD_DEFINITIONS( "-Wall -ansi")	本意是供设置 -D... /D... 等编译预处理需要的宏定义参数，对比 REMOVE_DEFINITIONS()
+
+LINK_LIBRARIES( lib1 lib2 ...)	设置所有目标需要链接的库
+SET_TARGET_PROPERTIES( ... )	设置目标的属性 OUTPUT_NAME, VERSION, ....
+MESSAGE(...)
+INSTALL( FILES “f1”“f2”DESTINATION . )	DESTINATION 相对于 ${CMAKE_INSTALL_PREFIX}
+SET( VAR value [CACHE TYPE DOCSTRING [FORCE]])
+LIST( APPEND|INSERT|LENGTH|GET| REMOVE_ITEM|REMOVE_AT|SORT ...)	列表操作
+STRING( TOUPPER|TOLOWER|LENGTH| SUBSTRING|REPLACE|REGEX ...)	字符串操作
+SEPARATE_ARGUMENTS( VAR )	转换空格分隔的字符串到列表
+FILE( WRITE|READ|APPEND|GLOB| GLOB_RECURSE|REMOVE|MAKE_DIRECTORY ...)	文件操作
+FIND_FILE	注意 CMAKE_INCLUDE_PATH
+FIND_PATH	注意 CMAKE_INCLUDE_PATH
+FIND_LIBRARY	注意 CMAKE_LIBRARY_PATH
+FIND_PROGRAM
+FIND_PACKAGE	注意 CMAKE_MODULE_PATH
+EXEC_PROGRAM( bin [work_dir] ARGS <..> [OUTPUT_VARIABLE var] [RETURN_VALUE var] )	执行外部程序
+OPTION( OPTION_VAR “description” [initial value] )
+
+
+变量
+
+
+当前处理的CMakeLists.txt所在的路径
+CMAKE_CURRENT_SOURCE_DIR
+
+target编译目录
+CMAKE_CURRRENT_BINARY_DIR
+
+调用这个变量的CMakeLists.txt的完整路径
+CMAKE_CURRENT_LIST_FILE
+
+CMAKE_BUILD_TYPE
+控制 Debug 和 Release 模式的构建
+
+CMakeList.txt文件
+SET(CMAKE_BUILD_TYPE Debug)
+命令行参数
+cmake -DCMAKE_BUILD_TYPE=Release
+
+
+编译器参数
+CMAKE_C_FLAGS
+CMAKE_CXX_FLAGS
+也可以通过指令ADD_DEFINITIONS()添加
+
+
+
+CMAKE_INCLUDE_PATH
+配合 FIND_FILE() 以及 FIND_PATH() 使用，否则没有任何作用。
+
+CMAKE_LIBRARY_PATH
+配合 FIND_LIBRARY() 使用。否则没有任何作用
+
+CMAKE_MODULE_PATH
+配合 FIND_PACKAGE()使用
+查找器(finder):FindXXXX.cmake
+
+
+CMAKE_INSTALL_PREFIX
+控制make install是文件会安装到什么地方。默认定义是/usr/local 或 %PROGRAMFILES%
+
+BUILD_SHARED_LIBS
+如果不进行设置，使用ADD_LIBRARY且没有指定库类型，默认编译生成的库是静态库。
+
+UNIX 与 WIN32
+UNIX，在所有的类UNIX平台为TRUE，包括OS X和cygwin
+WIN32，在所有的win32平台为TRUE，包括cygwin
+
+finder是神马东西？
+当编译一个需要使用第三方库的软件时，我们需要知道：
+去哪儿找头文件 .h	对比GCC的 -I 参数
+去哪儿找库文件 (.so/.dll/.lib/.dylib/...)	对比GCC的 -L 参数
+需要链接的库文件的名字	对比GCC的 -l 参数
+
+这也是一个 finder 需要返回的最基本的信息。
+
+
+finder，不是cmake自带的怎么办？
+放置位置：工程根目录下的 cmake/Modules/
+然后在 CMakeList.txt 中添加
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+
+
+find_package如何工作
+module路径下查找 Find<name>.cmake
+搜索路径（cmake –-help-module-list CMake支持的模块的列表）
+${CMAKE_MODULE_PATH}
+ <CMAKE_ROOT>/share/cmake-x.y/Modules/
+module 模式cmake --help-module-list FindBLAS
+
+<Name>Config.cmake 或 <lower-case-name>-config.cmake 文件。
+这两个文件是库文件安装时自己安装的，将自己的路径硬编码到其中。
+ config 模式
+
+
+每个模块一般都会提供一下几个变量
+<name>_FOUND
+<name>_INCLUDE_DIR 或 <name>_INCLUDES
+<name>_LIBRARY 或 <name>_LIBRARIES 或 <name>_LIBS
+<name>_DEFINITIONS
+
+编写cmake.find
+FindDEMO9LIB.cmake（精简版本）
+#辅助输出信息
+message("now using FindDEMO9LIB.cmake find demo9 lib")
+
+#将demo9.h文件路径赋值给DEMO9LIB_INCLUDE_DIR
+FIND_PATH(DEMO9LIB_INCLUDE_DIR demo9.h /usr/include/demo9/
+        /usr/local/demo9/include/)
+message("./h dir ${DEMO9LIB_INCLUDE_DIR}")
+
+#将libdemo9_lib.a文件路径赋值给DEMO9LIB_LIBRARY
+FIND_LIBRARY(DEMO9LIB_LIBRARY libdemo9_lib.a /usr/local/demo9/lib/)
+message("lib dir: ${DEMO9LIB_LIBRARY}")
+
+if(DEMO9LIB_INCLUDE_DIR AND DEMO9LIB_LIBRARY)
+    #设置变量结果
+    set(DEMO9LIB_FOUND TRUE)
+endif(DEMO9LIB_INCLUDE_DIR AND DEMO9LIB_LIBRARY)
+
+
+cmake .. -G "Visual Studio 10 Win64"
+
+## set
+```bash
+#设置变量CMAKE_PREFIX_PATH值为环境变量LIB3_DIR的值
+set(CMAKE_PREFIX_PATH $ENV{LIB3_DIR})
+```
+
+## enable_language 
+```bash
+enable_language(CXX)
+```
+
+## add_subdirectory
+```bash
+add_subdirectory(viirs_lib)
+```
+
+## foreach
+```bash
+foreach(subdir ${SUBDIRS})
+    add_subdirectory(src/${subdir})
+endforeach()
+```
+
+## macro
+```bash
+macro(subdirlist result curdir)
+  file(GLOB children RELATIVE ${curdir} ${curdir}/*)
+  set(dirlist "")
+  foreach(child ${children})
+    if(IS_DIRECTORY ${curdir}/${child})
+        list(APPEND dirlist ${child})
+    endif()
+  endforeach()
+  set(${result} ${dirlist})
+endmacro()
+
+subdirlist(SUBDIRS ${CMAKE_SOURCE_DIR}/src)
+```
+
+# 导入第三方库
+
+```cpp
+
+
+4.将很多第三方库统一放在一个文件夹 “thirdparty” 下
+set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+set_target_properties(<库名> PROPERTIES FOLDER "thirdparty")
+```
+
+
+
+## 3、link_libraries（引入库文件目录）
+
+```cpp
+# 绝对引入
+link_libraries("D:\ProgramFiles\Qt\qt5_7_lib_shared_64\lib")
+ 
+# 预定义变量引入
+# PROJECT_SOURCE_DIR 是cmake的预定义变量，表示顶层CmakeList文件所在路径
+link_libraries(${PROJECT_SOURCE_DIR}/ExtLib/ffmpeg/win64/lib)
+ 
+# 环境变量引入
+# 环境变量 QT_LIB = D:\\ProgramFiles\\Qt\\qt5_7_lib_shared_64
+link_libraries($ENV{QT_LIB}/lib)
+```
+
+## 4、target_link_libraries（引入库文件到子工程）
+
+```cpp
+add_executable(qt_test ${ALL_SRCS})    # 子工程名是 qt_test 
+ 
+# 绝对路径引入
+link_libraries(qt_test 
+    D:\\ProgramFiles\\Qt\\qt5_7_lib_shared_64\\lib\\Qt5Core.lib
+    D:\\ProgramFiles\\Qt\\qt5_7_lib_shared_64\\lib\\Qt5Gui.lib
+)
+ 
+# 普通变量引入（被打包的lib文件，必须能在搜索路径下找到）
+set (LIB_FFMPEG "avcodec.lib" "avdevice.lib" "avfilter.lib")
+link_libraries(qt_test 
+    ${LIB_FFMPEG}
+)
+ 
+# 预定义变量引入
+# PROJECT_SOURCE_DIR 是cmake的预定义变量，表示顶层CmakeList文件所在路径
+link_libraries(qt_test 
+    ${PROJECT_SOURCE_DIR}/ExtLib/ffmpeg/win64/lib/avcodec.lib
+)
+```
